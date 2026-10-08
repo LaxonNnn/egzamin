@@ -50,7 +50,7 @@ function subscribeIssueUpdates(){
     const after=JSON.stringify(Object.keys(publicComments).sort().map(id=>[id,(publicComments[id]||[]).map(x=>[x.id,x.comment,x.display_name,x.created_at])]));
     if(before!==after&&session[i]){const draft=$('comment').value;renderQ();$('comment').value=draft}
    }
-   if(adminVisible&&user&&!user.is_anonymous){await load();await renderIssues()}
+   if(adminVisible&&user&&!user.is_anonymous&&!$('issues').matches(':hover')&&!$('issues').contains(document.activeElement)){await load();await renderIssues()}
   }catch(e){console.error('Live issue refresh:',e)}finally{issuePollBusy=false}
  },2000);
 }
