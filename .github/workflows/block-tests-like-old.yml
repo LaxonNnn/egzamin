@@ -1,0 +1,39 @@
+name: Make block tests match old test
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/block-tests-like-old.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch block tests
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          s=s.replace('<section id="blockResults" class="card hidden block-results"><h2 id="blockResultTitle">Wynik testu blokowego</h2><h1 id="blockResultScore">0%</h1><p id="blockResultText"></p><div id="blockResultReview"></div><button class="primary" id="blockResultAgain" type="button">Powtórz blok</button><button class="secondary" id="blockResultHome" type="button">Wróć do Nowego egzaminu</button></section>','<section id="blockResults" class="card hidden block-results"><h2 id="blockResultTitle">Wynik testu blokowego</h2><h1 id="blockResultScore">0%</h1><p id="blockResultText"></p><div id="blockResultReview"></div><button class="primary" id="blockResultAgain" type="button">Nowy test z bloku</button><button class="secondary" id="blockResultRetry" type="button" disabled>Powtórz błędy</button><button class="secondary" id="blockResultHome" type="button">Wróć do wyboru testu</button></section>')
+          old="""card.innerHTML=`<h3>${b}. ${escapeHtml(EXAM_BLOCKS[b])}</h3><p><b>${count}</b> pytań w bazie</p><button class=\"secondary\" type=\"button\" ${count?'':'disabled'}>Rozpocznij test</button>`;const btn=card.querySelector('button');if(count)btn.onclick=()=>startBlockQuiz(b);blockTestGrid.appendChild(card)"""
+          new="""card.innerHTML=`<h3>${b}. ${escapeHtml(EXAM_BLOCKS[b])}</h3><p><b>${count}</b> pytań w bazie</p><label>Liczba pytań</label><select class=\"block-count\"><option value=\"20\">20</option><option value=\"50\">50</option><option value=\"100\">100</option><option value=\"all\">Wszystkie</option></select><button class=\"secondary\" type=\"button\" ${count?'':'disabled'}>Rozpocznij test</button>`;const btn=card.querySelector('button'),sel=card.querySelector('select');if(count)btn.onclick=()=>startBlockQuiz(b,sel.value);blockTestGrid.appendChild(card)"""
+          if old not in s: raise SystemExit('block card pattern not found')
+          s=s.replace(old,new)
+          s=s.replace('let blockQuizQuestions=[],blockQuizIndex=0,blockQuizCorrect=0,blockQuizWrong=[];','let blockQuizQuestions=[],blockQuizIndex=0,blockQuizCorrect=0,blockQuizWrong=[],blockQuizLastBlock=null,blockQuizLastCount="20";')
+          old="""function startBlockQuiz(blockId){const pool=examBank.filter(q=>Number(q.block_id)===Number(blockId));if(!pool.length)return;blockQuizQuestions=shuffle(pool).map(q=>({...q,displayOptions:shuffledOptions(q)}));blockQuizIndex=0;blockQuizCorrect=0;blockQuizWrong=[];hideMainModes();blockQuiz.classList.remove('hidden');renderBlockQuestion()}"""
+          new="""function startBlockQuiz(blockId,count='20',retry=false){let pool=retry?blockQuizWrong.slice():examBank.filter(q=>Number(q.block_id)===Number(blockId));if(!pool.length)return;blockQuizLastBlock=Number(blockId);blockQuizLastCount=count;const n=count==='all'?pool.length:Math.min(Number(count)||20,pool.length);blockQuizQuestions=shuffle(pool).slice(0,n).map(q=>({...q,displayOptions:shuffledOptions(q)}));blockQuizIndex=0;blockQuizCorrect=0;blockQuizWrong=[];hideMainModes();blockQuiz.classList.remove('hidden');renderBlockQuestion()}"""
+          if old not in s: raise SystemExit('startBlockQuiz pattern not found')
+          s=s.replace(old,new)
+          s=s.replace("blockResultAgain.onclick=()=>startBlockQuiz(Number(blockQuizQuestions[0]?.block_id||1));blockResultHome.onclick=showMainModes;blockQuizHome.onclick=showMainModes;", "blockResultAgain.onclick=()=>startBlockQuiz(blockQuizLastBlock,blockQuizLastCount);blockResultRetry.onclick=()=>{if(blockQuizWrong.length)startBlockQuiz(blockQuizLastBlock,'all',true)};blockResultHome.onclick=showMainModes;blockQuizHome.onclick=showMainModes;")
+          marker="blockResultReview.innerHTML=blockQuizWrong.length?'<h3>Błędne odpowiedzi</h3>'+blockQuizWrong.map"
+          if marker not in s: raise SystemExit('result marker not found')
+          s=s.replace(marker,"blockResultRetry.disabled=!blockQuizWrong.length;"+marker)
+          s=s.replace("function showMainModes(){hideMainModes();home.classList.remove('hidden');newExamHome.classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'})}","function showMainModes(){hideMainModes();home.classList.remove('hidden');newExamHome.classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'})}")
+          p.write_text(s)
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git commit -m "Make block tests behave like standard tests"
+          git push
