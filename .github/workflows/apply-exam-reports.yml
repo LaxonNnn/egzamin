@@ -1,0 +1,21 @@
+name: Apply exam reports UI
+on:
+  push:
+    branches: [feature/exam-question-reports]
+    paths: [scripts/patch_exam_reports.py]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/exam-question-reports
+      - run: python3 scripts/patch_exam_reports.py
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git diff --cached --quiet || git commit -m "Add reports and comments to thematic questions"
+          git push origin HEAD:feature/exam-question-reports
