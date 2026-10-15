@@ -2,7 +2,7 @@ name: Apply exam reports UI
 on:
   push:
     branches: [feature/exam-question-reports]
-    paths: [scripts/patch_exam_reports.py]
+    paths: [.github/workflows/apply-exam-reports.yml, scripts/patch_exam_reports.py]
 permissions:
   contents: write
 jobs:
