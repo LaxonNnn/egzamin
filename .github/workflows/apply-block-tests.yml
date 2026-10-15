@@ -1,0 +1,28 @@
+name: Apply block tests patch
+on:
+  push:
+    branches: [feature/block-tests-and-exam-readiness]
+    paths:
+      - 'scripts/patch_block_tests.py'
+      - '.github/workflows/apply-block-tests.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/block-tests-and-exam-readiness
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: python scripts/patch_block_tests.py
+      - name: Commit patched index
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Enable thematic block practice tests"
+          git push
