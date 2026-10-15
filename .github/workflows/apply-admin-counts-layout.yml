@@ -1,0 +1,21 @@
+name: Apply admin counts layout
+on:
+  push:
+    branches: [feature/admin-block-counts-layout-v3]
+    paths: [.github/workflows/apply-admin-counts-layout.yml, scripts/patch_admin_counts_layout.py]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/admin-block-counts-layout-v3
+      - run: python3 scripts/patch_admin_counts_layout.py
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git diff --cached --quiet || git commit -m "Separate block counts from reports"
+          git push origin HEAD:feature/admin-block-counts-layout-v3
