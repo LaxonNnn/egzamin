@@ -1,1 +1,0 @@
-const fs=require('fs');const s=fs.readFileSync('index.html','utf8');const m=s.match(/<script id="applicationScript" type="text\/plain">([\s\S]*?)<\/script>/);if(!m)throw new Error('applicationScript not found');new Function(m[1]);console.log('applicationScript syntax OK');
