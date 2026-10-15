@@ -1,0 +1,21 @@
+name: Apply exam admin improvements
+on:
+  push:
+    branches: [feature/exam-admin-final]
+    paths: [.github/workflows/apply-exam-admin-v2.yml, scripts/patch_exam_admin_v2.py]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/exam-admin-final
+      - run: python3 scripts/patch_exam_admin_v2.py
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git diff --cached --quiet || git commit -m "Improve thematic reports admin"
+          git push origin HEAD:feature/exam-admin-final
