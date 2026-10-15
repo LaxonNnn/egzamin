@@ -1,0 +1,29 @@
+name: Fix exam thresholds
+on:
+  push:
+    branches: [feature/full-exam-and-navigation-fixes]
+    paths: [.github/workflows/fix-exam-thresholds.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/full-exam-and-navigation-fixes
+      - name: Correct pass thresholds and block wording
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          s=s.replace("EXAM_MIN={1:3,2:3,3:18,4:4,5:13,6:2,7:2,8:15}","EXAM_MIN={1:3,2:3,3:18,4:4,5:13,6:2,7:2,8:15}")
+          s=s.replace("Wymagane minimum: 75/100 oraz minima w każdym bloku.","Wymagane: minimum 75/100 łącznie, minimum 50% w każdym z bloków 1–7 oraz 100% w bloku 8 — Sygnalizacja kolejowa.")
+          s=s.replace("<h3>Testy z bloków tematycznych</h3><p class=\"muted\">Bez limitu czasu. Test wykorzystuje wszystkie dostępne pytania z wybranego bloku i losuje ich kolejność oraz kolejność odpowiedzi.</p>","<h3>Testy z bloków tematycznych</h3><p class=\"muted\">Bez limitu czasu. Po wybraniu bloku możesz wybrać 20, 50, 100 lub wszystkie dostępne pytania. Jeżeli w bloku jest mniej pytań niż wybrana liczba, test wykorzysta wszystkie dostępne. Test można zakończyć w dowolnym momencie i wyświetlić wynik.</p>")
+          p.write_text(s)
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git commit -m "Clarify official exam pass thresholds" || exit 0
+          git push origin HEAD:feature/full-exam-and-navigation-fixes
