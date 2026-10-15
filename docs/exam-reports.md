@@ -1,1 +1,0 @@
-Thematic-question reports and comments use public.exam_issue_reports, linked to public.exam_questions. This keeps the original public.issue_reports table and the original questions flow unchanged.
