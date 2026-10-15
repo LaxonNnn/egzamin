@@ -1,1 +1,0 @@
-Verification checklist: thematic block questions expose outdated/wrong report buttons, public report counters, comments, refresh/delete-own-comment controls; New Exam admin tab shows grouped active reports and can dismiss them. Data is stored separately in public.exam_issue_reports so the original questions/issue_reports flow remains unchanged.
