@@ -1,0 +1,45 @@
+name: Apply block test UX v2
+on:
+  push:
+    branches: [fix/block-test-ux-v2]
+    paths: [.github/workflows/apply-block-test-ux-v2.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/block-test-ux-v2
+      - name: Patch current index
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text()
+          old='<section id="blockResults" class="card hidden block-results"><h2 id="blockResultTitle">Wynik testu blokowego</h2><h1 id="blockResultScore">0%</h1><p id="blockResultText"></p><div id="blockResultReview"></div><button class="primary" id="blockResultAgain" type="button">Powtórz blok</button><button class="secondary" id="blockResultHome" type="button">Wróć do Nowego egzaminu</button></section>'
+          new='<section id="blockResults" class="card hidden block-results"><h2 id="blockResultTitle">Wynik testu blokowego</h2><h1 id="blockResultScore">0%</h1><p id="blockResultText"></p><div id="blockResultReview"></div><button class="primary" id="blockResultAgain" type="button">Nowy test z bloku</button><button class="secondary" id="blockResultRetry" type="button" disabled>Powtórz błędy</button><button class="secondary" id="blockResultHome" type="button">Wróć do wyboru testu</button></section>'
+          assert old in s, 'block results not found'; s=s.replace(old,new)
+          s=s.replace("let blockSession=[],blockIndex=0,blockChosen={},activeBlockId=null,fullExamSession=[]", "let blockSession=[],blockIndex=0,blockChosen={},blockMistakes=new Set(),activeBlockId=null,blockCountChoice='20',fullExamSession=[]")
+          a="function renderBlockTests(){if(!$('blockTestGrid'))return;let html='';for(let b=1;b<=8;b++){let n=examBank.filter(q=>q.block_id===b).length;html+='<div class=\"block-card\"><h3>Blok '+b+' — '+esc(BLOCKS[b])+'</h3><p class=\"muted\">'+n+' '+questionWord(n)+' w bazie</p><button class=\"'+(n?'primary':'secondary')+'\" type=\"button\" '+(n?'onclick=\"startBlockTest('+b+')\"':'disabled')+'>'+(n?'Rozpocznij test':'Brak pytań')+'</button></div>'}$('blockTestGrid').innerHTML=html}"
+          b="function renderBlockTests(){if(!$('blockTestGrid'))return;let html='';for(let b=1;b<=8;b++){let n=examBank.filter(q=>q.block_id===b).length;html+='<div class=\"block-card\"><h3>Blok '+b+' — '+esc(BLOCKS[b])+'</h3><p class=\"muted\">'+n+' '+questionWord(n)+' w bazie</p><label for=\"blockCount'+b+'\">Liczba pytań</label><select id=\"blockCount'+b+'\" '+(n?'':'disabled')+'><option value=\"20\">20</option><option value=\"50\">50</option><option value=\"100\">100</option><option value=\"all\">Wszystkie</option></select><button class=\"'+(n?'primary':'secondary')+'\" type=\"button\" '+(n?'onclick=\"startBlockTest('+b+',$(\\\'blockCount'+b+'\\\').value)\"':'disabled')+'>'+(n?'Rozpocznij test':'Brak pytań')+'</button></div>'}$('blockTestGrid').innerHTML=html}"
+          assert a in s, 'renderBlockTests not found'; s=s.replace(a,b)
+          a="function startBlockTest(blockId){let rows=examBank.filter(q=>q.block_id===blockId);if(!rows.length)return;let raw=prompt('Liczba pytań: 20, 50, 100 lub wszystkie','20');if(raw===null)return;raw=raw.trim().toLowerCase();let wanted=(raw==='wszystkie'||raw==='all')?rows.length:Number(raw);if(![20,50,100].includes(wanted)&&wanted!==rows.length){alert('Wybierz 20, 50, 100 lub wszystkie.');return}wanted=Math.min(wanted,rows.length);activeBlockId=blockId;blockSession=shuffle([...rows]).slice(0,wanted).map(prepareExamQuestion);blockIndex=0;blockChosen={};showOnly('blockQuiz');renderBlockQuestion();window.scrollTo({top:0,behavior:'smooth'})}"
+          b="function startBlockTest(blockId,countValue='20',retry=false){let rows=retry?examBank.filter(q=>q.block_id===blockId&&blockMistakes.has(q.id)):examBank.filter(q=>q.block_id===blockId);if(!rows.length)return;activeBlockId=blockId;blockCountChoice=countValue;let wanted=countValue==='all'?rows.length:Math.min(Number(countValue)||20,rows.length);blockSession=shuffle([...rows]).slice(0,wanted).map(prepareExamQuestion);blockIndex=0;blockChosen={};if(!retry)blockMistakes=new Set();showOnly('blockQuiz');renderBlockQuestion();window.scrollTo({top:0,behavior:'smooth'})}"
+          assert a in s, 'startBlockTest not found'; s=s.replace(a,b)
+          s=s.replace("function answerBlockQuestion(k){let q=blockSession[blockIndex];blockChosen[q.id]=k;renderBlockQuestion()}","function answerBlockQuestion(k){let q=blockSession[blockIndex];blockChosen[q.id]=k;if(k!==q.correct_answer)blockMistakes.add(q.id);else blockMistakes.delete(q.id);renderBlockQuestion()}")
+          s=s.replace("$('blockResultText').textContent=good+' / '+blockSession.length+' poprawnych';$('blockResultReview')", "$('blockResultText').textContent=good+' / '+blockSession.length+' poprawnych';$('blockResultRetry').disabled=!blockMistakes.size;$('blockResultReview')")
+          a="function leaveBlockTest(){if(blockSession.length&&Object.keys(blockChosen).length<blockSession.length&&!confirm('Zakończyć test przed odpowiedzią na wszystkie pytania?'))return;$('blockQuiz').classList.add('hidden');$('blockResults').classList.add('hidden');$('newExamHome').classList.remove('hidden');blockSession=[];blockChosen={};window.scrollTo({top:$('newExamHome').offsetTop-10,behavior:'smooth'})}"
+          b="function leaveBlockTest(){if(!$('blockQuiz').classList.contains('hidden')&&blockSession.length&&Object.keys(blockChosen).length<blockSession.length&&!confirm('Przerwać test i wrócić do wyboru?'))return;blockSession=[];blockChosen={};showHome()}"
+          assert a in s, 'leaveBlockTest not found'; s=s.replace(a,b)
+          a="$('blockQuizNext').onclick=()=>blockIndex<blockSession.length-1?(blockIndex++,renderBlockQuestion()):finishBlockTest();$('blockQuizExit').onclick=leaveBlockTest;$('blockResultAgain').onclick=()=>startBlockTest(activeBlockId);$('blockResultHome').onclick=leaveBlockTest;"
+          b="$('blockQuizNext').onclick=()=>blockIndex<blockSession.length-1?(blockIndex++,renderBlockQuestion()):finishBlockTest();$('blockQuizExit').onclick=finishBlockEarly;$('blockResultAgain').onclick=()=>startBlockTest(activeBlockId,blockCountChoice);$('blockResultRetry').onclick=()=>startBlockTest(activeBlockId,'all',true);$('blockResultHome').onclick=leaveBlockTest;$('blockQuizHome').onclick=leaveBlockTest;"
+          assert a in s, 'block handlers not found'; s=s.replace(a,b)
+          s=s.replace('Bez limitu czasu. Test wykorzystuje wszystkie dostępne pytania z wybranego bloku i losuje ich kolejność oraz kolejność odpowiedzi.','Bez limitu czasu. Wybierz 20, 50, 100 lub wszystkie pytania z danego bloku. Po wyniku możesz powtórzyć tylko błędne pytania — tak jak w podstawowym teście.')
+          p.write_text(s)
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git commit -m "Match block tests to standard test UX"
+          git push origin HEAD:fix/block-test-ux-v2
